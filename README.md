@@ -10,7 +10,7 @@ The numbers are counts. They don't judge whether an animation is good, and a cou
 
 | Command | What it does | Exit code |
 |---|---|---|
-| `motion-gauge instrument [PAGE]` | Checks the measurement path: page visible, `requestAnimationFrame` firing within 10% of the display rate with no more than 10% long frames, style and layout reads passing a control. Records headed or headless, browser version and renderer | 0 healthy, 1 degraded |
+| `motion-gauge instrument [PAGE]` | Checks the measurement path: page visible, `requestAnimationFrame` firing within 10% of the display rate with no more than 10% long frames, style and layout reads passing a control. Records headed or headless, browser version and renderer. `busy` and `predicates` run the same gate before and after every run | 0 healthy, 1 degraded |
 | `motion-gauge busy PAGE --spec SPEC` | Per settled beat: visible text runs and words, painted elements, a 6 by 8 coverage grid from element boxes and the same grid from pixels, elements that move in the beat's motion window, endless animations | 0 measured, 2 measured nothing or a bad spec |
 | `motion-gauge predicates PAGE --spec SPEC` | Checks the spec's predicates: `appearsBy`, `before`, `staysInFrame`, `noOverlap`, `maxMovers`, `density` | 0 all hold, 1 any fails, 2 measured nothing or a bad spec |
 | `motion-gauge compare CALM.json BUSY.json` | Two `busy` reports side by side, the one that should be calmer first: medians, how often its beats are lower, and a provisional band where a metric separates them | 0, or 2 if a report measured nothing |
@@ -92,6 +92,8 @@ It returns one of three verdicts:
 - `USABLE WITH CAVEATS`: read the warnings first (software renderer, quirks mode, fonts still loading, a tiny window).
 - `INSTRUMENT DEGRADED`: fix the instrument before you conclude anything. Blockers are a hidden tab, `requestAnimationFrame` not firing, a frame rate more than 10% off the display, more than 10% long frames, `getComputedStyle` failing a control reading, or layout reads (`innerText`, `getBoundingClientRect`) returning nothing for a visible control element.
 
+Set `window.__instrumentCheck = {cadence: "warn"}` when your measurement seeks a timeline to each moment rather than waiting for frames: a slow or uneven frame clock then becomes a warning, while a clock that doesn't fire at all still blocks. `busy` and `predicates` do this for `seek` specs and keep cadence blocking for `steps` specs.
+
 It can't hang. `requestAnimationFrame` is raced against `setTimeout`, which still fires in a hidden tab, and the whole check finishes in a few seconds. It doesn't know your display's refresh rate unless you tell it (`window.__instrumentCheck = {displayHz: 120}` before pasting), so by default it assumes the nearest standard rate to the one it measures and says so.
 
 The Python gate runs this same file, so a paste-in check and a gauge run judge the measurement path by the same rules.
@@ -149,9 +151,9 @@ Times are fractions of the beat's motion window: 0 is where it starts, 1 the set
 
 ## Headless and headed
 
-Headless Chromium draws through a software rasteriser (SwiftShader), so the gate on a headless run reports `USABLE WITH CAVEATS`. Seeked pages are sampled by setting the timeline, not by waiting for frames, so their counts don't depend on cadence. On `calm.html`, a headless and a headed run on a Mac gave the same counts on every beat.
+Headless Chromium draws through a software rasteriser (SwiftShader), so the gate on a headless run reports `USABLE WITH CAVEATS`. Seeked pages are sampled by setting the timeline, not by waiting for frames, so their counts don't depend on cadence, and the gate only warns about a slow frame clock on a `seek` run. With the frame clock throttled to about 2 Hz, the tests get the same mover counts on `calm.html` as with a healthy one. On `calm.html`, a headless and a headed run on a Mac gave the same counts on every beat.
 
-Anything that runs in real time, a `steps` page above all, depends on the frame clock. Run it with `--headed`, in a visible window, and let the gate say whether the cadence held. Headless frame drops describe the software rasteriser, not your page. On macOS and Linux the gate can't read the display's refresh rate, so headed runs assume the nearest standard rate to the measured one and say so; pass `--display-hz` to set it. On Windows it asks the system for the rate first.
+Anything that runs in real time, a `steps` page above all, depends on the frame clock, so on a `steps` run the gate fails when the cadence is off. Run these with `--headed`, in a visible window. On GitHub's macOS runners, headless Chromium's frame clock ran at 30 Hz against 60, and the gate refused real-time runs there. Headless frame drops describe the software rasteriser, not your page. On macOS and Linux the gate can't read the display's refresh rate, so headed runs assume the nearest standard rate to the measured one and say so; pass `--display-hz` to set it. On Windows it asks the system for the rate first.
 
 ## Turning counts into thresholds
 
@@ -172,7 +174,7 @@ A count becomes a threshold only after it separates pages people have already ju
 python -m pytest -q
 ```
 
-The tests run headless Chromium against the example pages. Every expected count is worked out by hand from the pages' CSS. Faults are planted in the measurement path (a hidden page with `requestAnimationFrame` stubbed out, a frame clock throttled to about 2 Hz, empty layout reads, a stale `getComputedStyle`) and each must turn the verdict to `INSTRUMENT DEGRADED`. CI runs them on Linux and macOS with Python 3.11 and 3.13, and on Windows with Python 3.11.
+The tests run headless Chromium against the example pages. Every expected count is worked out by hand from the pages' CSS. Faults are planted in the measurement path (a hidden page with `requestAnimationFrame` stubbed out, a frame clock throttled to about 2 Hz, empty layout reads, a stale `getComputedStyle`) and each must turn the verdict to `INSTRUMENT DEGRADED`. Tests that need a healthy real-time frame clock first take a control reading on this machine and skip, saying why, when it fails. CI runs the suite on Linux and macOS with Python 3.11 and 3.13, and on Windows with Python 3.11.
 
 ## Licence
 

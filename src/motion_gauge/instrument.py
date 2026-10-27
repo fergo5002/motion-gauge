@@ -6,8 +6,11 @@ It answers one question: can this browser, on this page, measure anything? It ru
 `instrument_check.js` (the same file a person can paste into DevTools) and adds what only the
 launcher knows: headed or headless, the browser's version, and the display rate. The page must be
 visible, requestAnimationFrame must fire (raced against setTimeout, which still fires in a hidden
-tab), its cadence must be within 10% of the display rate with no more than 10% long frames, and
-style and layout reads must pass a control. A run whose gate fails reports that it measured nothing.
+tab), and style and layout reads must pass a control. For real-time work (a stepped page, or the
+bare instrument check) the frame clock must also keep within 10% of the display rate with no more
+than 10% long frames. A seeked run sets the timeline to each moment rather than waiting for frames,
+so for it a slow or uneven clock is a warning, not a failure. A run whose gate fails reports that it
+measured nothing.
 
 The display rate: headless Chromium draws at 60 Hz. Headed, it is `--display-hz` when given, read
 from Windows when it can be, and otherwise the nearest standard rate to the measured one, which the
@@ -48,8 +51,10 @@ def os_display_hz() -> float | None:
         return None
 
 
-def gate(page, headed: bool | None = None, display_hz: float | None = None, ms: int = 1000) -> dict:
-    """Read the measurement path on `page`. `headed` defaults to how the page's session launched."""
+def gate(page, headed: bool | None = None, display_hz: float | None = None, ms: int = 1000, realtime: bool = True) -> dict:
+    """Read the measurement path on `page`. `headed` defaults to how the page's session launched.
+    `realtime` False makes cadence problems warnings (for seeked runs); a clock that never fires
+    still fails."""
     sess = session_of(page)
     if headed is None:
         headed = bool(sess and sess.headed)
@@ -60,7 +65,8 @@ def gate(page, headed: bool | None = None, display_hz: float | None = None, ms: 
     else:
         disp = os_display_hz()
         source = "read from Windows" if disp else None
-    page.evaluate("o => { window.__instrumentCheck = o; }", {"displayHz": disp, "sampleMs": ms})
+    opts = {"displayHz": disp, "sampleMs": ms, "cadence": "block" if realtime else "warn"}
+    page.evaluate("o => { window.__instrumentCheck = o; }", opts)
     try:
         raw = page.evaluate(snippet())
     finally:
@@ -88,6 +94,7 @@ def gate(page, headed: bool | None = None, display_hz: float | None = None, ms: 
         "display_hz": disp,
         "display_source": source,
         "long_frame_share": cad.get("longFrameShare"),
+        "realtime": realtime,
         "headless": not headed,
         "ua_headless": ua_headless,
         "browser": browser.browser_type.name,

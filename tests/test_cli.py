@@ -40,7 +40,7 @@ def test_an_unknown_tool_is_refused(capsys):
     assert e.value.code == 2
 
 
-def test_the_installed_command_runs_the_instrument(tmp_path):
+def test_the_installed_command_runs_the_instrument(tmp_path, healthy_clock):
     run = subprocess.run([sys.executable, "-m", "motion_gauge", "instrument", "--viewport", "800x600"],
                          capture_output=True, text=True, timeout=120)
     assert run.returncode == 0, run.stdout + run.stderr

@@ -322,7 +322,7 @@ def check(target, spec: dict, *, headed: bool = False, session: Session | None =
     try:
         page = sess.open(target, viewport=drive.viewport_for(spec), extra_init=extra_init)
         try:
-            gate = instrument.gate(page, display_hz=display_hz)
+            gate = instrument.gate(page, display_hz=display_hz, realtime=spec["kind"] == "steps")
             report = {"spec": SPEC_ID, "page": str(target), "measured": False, "ok": False, "gate": gate, "beats": [],
                       "kind": spec["kind"], "samples": samples, "headed": sess.headed}
             if not gate["ok"]:
@@ -351,7 +351,7 @@ def check(target, spec: dict, *, headed: bool = False, session: Session | None =
                 results = [evaluate(p, tl, index, win, settled, final["W"], final["H"], ink, b.label) for p in preds]
                 beats.append({"label": b.label, "learns": b.row.get("learns"), "motion": b.row.get("motion"), "results": results,
                               "movers": None if win is None else {"window": win["window"], "peak": win["peak"], "names": win["names"]}})
-            after = instrument.gate(page, display_hz=display_hz)
+            after = instrument.gate(page, display_hz=display_hz, realtime=spec["kind"] == "steps")
             report["gate_after"] = after
             report["errors"] = list(page.gauge_errors)
             if not after["ok"]:

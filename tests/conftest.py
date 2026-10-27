@@ -19,6 +19,27 @@ def session():
         yield s
 
 
+@pytest.fixture(scope="session")
+def clock(session, pages):
+    """A control reading of this machine's frame clock, taken on a known-good page. Some CI runners
+    run headless Chromium's frame clock at 30 Hz; the gate rightly calls that degraded for real-time
+    work, so tests that need a healthy clock skip there with the reading as the reason."""
+    from motion_gauge import instrument
+
+    page = session.open(pages["calm"])
+    try:
+        return instrument.gate(page, realtime=True)
+    finally:
+        page.context.close()
+
+
+@pytest.fixture
+def healthy_clock(clock):
+    if not clock["ok"]:
+        pytest.skip("this machine's headless frame clock failed its control reading: " + "; ".join(clock["reasons"]))
+    return clock
+
+
 # A planted fault in the measurement path: the document says it is hidden and requestAnimationFrame
 # never calls back, which is what a background tab does to every frame-based probe.
 HIDDEN = """

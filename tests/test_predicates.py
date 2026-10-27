@@ -120,7 +120,7 @@ def test_an_invalid_selector_fails_its_rules(pages, session, spec):
     assert res["ok"] is False and "invalid selector" in res["detail"]
 
 
-def test_a_stepped_page_checks_its_rules(pages, session):
+def test_a_stepped_page_checks_its_rules(pages, session, healthy_clock):
     spec = json.loads(pages["steps_spec"].read_text("utf8"))
     r = predicates.check(pages["steps"], spec, session=session)
     assert r["measured"] is True, r.get("note")

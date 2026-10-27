@@ -24,6 +24,10 @@
  *               nearest standard rate to the measured one is assumed
  *   sampleMs    how long to watch the frame clock (default 1000)
  *   stamps      true to include the raw frame timestamps in the result
+ *   cadence     "block" (default) or "warn". Real-time work needs a healthy
+ *               frame clock; work that seeks a timeline to each moment only
+ *               needs one that fires, so a slow or uneven clock can be a
+ *               warning there. A clock that does not fire always blocks.
  *   intervals   frame intervals in ms to judge instead of measuring (tests)
  *
  * motion-gauge runs this same file as its instrument gate, so a paste-in
@@ -40,6 +44,7 @@
   const STANDARD_HZ = [60, 75, 90, 100, 120, 144, 165, 240];
   const sampleMs = opts.sampleMs || 1000;
   const out = { blockers: [], warnings: [] };
+  const cadenceIssues = opts.cadence === 'warn' ? out.warnings : out.blockers;
 
   // --- the tab. A hidden tab does not run requestAnimationFrame. ----------
   out.visibilityState = document.visibilityState;
@@ -89,7 +94,7 @@
   const cad = { frames: intervals.length, rafHz: null, displayHz: null, displaySource: null, longFrameShare: null };
   if (out.rafFires) {
     if (intervals.length < MIN_FRAMES) {
-      out.blockers.push('Only ' + intervals.length + ' frame intervals in the sample (at least ' + MIN_FRAMES +
+      cadenceIssues.push('Only ' + intervals.length + ' frame intervals in the sample (at least ' + MIN_FRAMES +
         ' needed): requestAnimationFrame is stalling or throttled.');
     } else {
       const sorted = intervals.slice().sort((a, b) => a - b);
@@ -109,11 +114,11 @@
       cad.displayHz = disp;
       cad.longFrameShare = Math.round(long * 1000) / 1000;
       if (Math.abs(hz - disp) / disp > RATE_TOLERANCE) {
-        out.blockers.push('requestAnimationFrame runs at ' + hz.toFixed(1) + ' Hz against a ' + disp +
+        cadenceIssues.push('requestAnimationFrame runs at ' + hz.toFixed(1) + ' Hz against a ' + disp +
           ' Hz display (more than ' + Math.round(RATE_TOLERANCE * 100) + '% off): the frame clock is throttled or overloaded.');
       }
       if (long > LONG_SHARE) {
-        out.blockers.push(Math.round(long * 100) + '% of frames are longer than ' + LONG_FACTOR +
+        cadenceIssues.push(Math.round(long * 100) + '% of frames are longer than ' + LONG_FACTOR +
           ' display frames (more than ' + Math.round(LONG_SHARE * 100) + '%): timings read now describe the hitches.');
       }
     }

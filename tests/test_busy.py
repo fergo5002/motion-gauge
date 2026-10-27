@@ -89,7 +89,7 @@ def test_a_timeline_can_be_any_expression_with_a_seek_method(pages, session, spe
     assert [(b["movers"]["window"], b["movers"]["peak"]) for b in r["beats"]] == [(1, 1), (1, 1), (2, 1)]
 
 
-def test_a_stepped_page_is_sampled_in_real_time(pages, session):
+def test_a_stepped_page_is_sampled_in_real_time(pages, session, healthy_clock):
     spec = json.loads(pages["steps_spec"].read_text("utf8"))
     r = busy.measure(pages["steps"], spec, session=session)
     assert r["measured"] is True, r.get("note")

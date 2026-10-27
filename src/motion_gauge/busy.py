@@ -90,7 +90,7 @@ def measure(target, spec: dict | None, *, headed: bool = False, session: Session
     try:
         page = sess.open(target, viewport=drive.viewport_for(spec), extra_init=extra_init)
         try:
-            gate = instrument.gate(page, display_hz=display_hz)
+            gate = instrument.gate(page, display_hz=display_hz, realtime=spec["kind"] == "steps")
             report = {"page": str(target), "measured": False, "gate": gate, "beats": [], "kind": spec["kind"],
                       "samples": samples, "headed": sess.headed}
             if not gate["ok"]:
@@ -99,7 +99,7 @@ def measure(target, spec: dict | None, *, headed: bool = False, session: Session
             d = drive.driver_for(page, spec)
             d.ready()
             beats = [measure_beat(d, b, samples) for b in d.beats()]
-            after = instrument.gate(page, display_hz=display_hz)
+            after = instrument.gate(page, display_hz=display_hz, realtime=spec["kind"] == "steps")
             report["gate_after"] = after
             report["errors"] = list(page.gauge_errors)
             if not after["ok"]:

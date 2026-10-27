@@ -37,7 +37,7 @@ def test_the_snippet_is_one_pasteable_expression():
     assert js.rstrip().endswith("})(window.__instrumentCheck);")
 
 
-def test_the_snippet_passes_a_visible_page(open_page):
+def test_the_snippet_passes_a_visible_page(open_page, healthy_clock):
     out = run_snippet(open_page())
     assert out["blockers"] == [], out["blockers"]
     assert out["verdict"] in ("CLEAR", "USABLE WITH CAVEATS")
@@ -79,12 +79,12 @@ def test_the_snippet_degrades_when_computed_style_disagrees_with_what_was_set(op
 
 
 def test_the_snippet_warns_about_quirks_mode_but_not_on_a_standards_page(session, open_page, tmp_path):
-    assert not any("Quirks" in w for w in run_snippet(open_page())["warnings"])
+    assert not any("Quirks" in w for w in run_snippet(open_page(), {"cadence": "warn"})["warnings"])
     p = tmp_path / "quirks.html"
     p.write_text("<html><body><p>no doctype</p></body></html>", "utf8")
     page = session.open(p)
     try:
-        out = run_snippet(page)
+        out = run_snippet(page, {"cadence": "warn"})
     finally:
         page.context.close()
     assert out["blockers"] == []
@@ -110,7 +110,7 @@ def test_cadence_rules(open_page, intervals, display, ok):
     assert cadence_blocked is (not ok), out["blockers"]
 
 
-def test_the_gate_passes_a_visible_page_and_records_the_browser(open_page):
+def test_the_gate_passes_a_visible_page_and_records_the_browser(open_page, healthy_clock):
     g = instrument.gate(open_page())
     assert g["ok"] is True, g["reasons"]
     assert g["verdict"] in ("CLEAR", "USABLE WITH CAVEATS")
@@ -121,6 +121,41 @@ def test_the_gate_passes_a_visible_page_and_records_the_browser(open_page):
     assert abs(g["raf_hz"] - 60) / 60 <= 0.1
     assert g["renderer"]
     json.dumps(g)
+
+
+@pytest.mark.parametrize("cadence", ["block", "warn"])
+def test_cadence_can_be_a_warning_but_a_stopped_clock_still_blocks(open_page, cadence):
+    out = run_snippet(open_page(), {"intervals": [33.3] * 60, "displayHz": 60, "cadence": cadence})
+    rate = [m for m in out["blockers"] + out["warnings"] if "Hz against" in m]
+    assert rate, out
+    if cadence == "warn":
+        assert not any("Hz against" in b for b in out["blockers"])
+        assert out["verdict"] == "USABLE WITH CAVEATS"
+    else:
+        assert out["verdict"] == "INSTRUMENT DEGRADED"
+    hidden = run_snippet(open_page(extra_init=[HIDDEN]), {"cadence": "warn"})
+    assert hidden["verdict"] == "INSTRUMENT DEGRADED"
+    assert any("requestAnimationFrame did not fire" in b for b in hidden["blockers"])
+
+
+def test_a_seek_gate_passes_a_throttled_clock_with_a_warning_and_a_realtime_gate_does_not(open_page):
+    page = open_page(extra_init=[THROTTLED])
+    seek = instrument.gate(page, realtime=False)
+    assert seek["ok"] is True, seek["reasons"]
+    assert seek["realtime"] is False
+    assert any("frame intervals" in w for w in seek["warnings"])
+    real = instrument.gate(page, realtime=True)
+    assert real["ok"] is False and real["realtime"] is True
+
+
+def test_seeked_counts_survive_a_throttled_clock_but_a_stepped_run_measures_nothing(session, pages):
+    from motion_gauge import busy
+    spec = json.loads(pages["storyboard"].read_text("utf8"))
+    r = busy.measure(pages["calm"], spec, session=session, extra_init=[THROTTLED])
+    assert r["measured"] is True, r.get("note")
+    assert [(b["movers"]["window"], b["movers"]["peak"]) for b in r["beats"]] == [(1, 1), (1, 1), (2, 1)]
+    steps = busy.measure(pages["steps"], json.loads(pages["steps_spec"].read_text("utf8")), session=session, extra_init=[THROTTLED])
+    assert steps["measured"] is False and "measured nothing" in steps["note"]
 
 
 def test_the_gate_fails_a_hidden_page(open_page):
