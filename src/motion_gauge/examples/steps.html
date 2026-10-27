@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Steps example</title>
+<style>
+html, body { margin: 0; background: #fff; color: #1b2430; font-family: Arial, Helvetica, sans-serif; }
+#frame { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #fff; }
+#title { position: absolute; left: 160px; top: 80px; margin: 0; font-size: 48px; font-weight: 700; }
+.box { position: absolute; width: 240px; height: 120px; box-sizing: border-box; border: 2px solid #1b2430;
+       border-radius: 12px; display: grid; place-items: center; font-size: 28px; }
+[data-step] { transition: opacity 0.3s ease; }
+.pending { opacity: 0; }
+</style>
+</head>
+<body>
+<!-- A page that steps like a slide deck: go(k) shows every [data-step] up to k, and the right
+     arrow key steps on. Two boxes arrive at step 1 and three at step 2, each a 0.3 s CSS fade. -->
+<div id="frame">
+  <h1 id="title">Steps</h1>
+  <div class="box" data-step="1" style="left: 200px; top: 400px">Alpha</div>
+  <div class="box" data-step="1" style="left: 600px; top: 400px">Beta</div>
+  <div class="box" data-step="2" style="left: 200px; top: 700px">Gamma</div>
+  <div class="box" data-step="2" style="left: 600px; top: 700px">Delta</div>
+  <div class="box" data-step="2" style="left: 1000px; top: 700px">Epsilon</div>
+</div>
+<script>
+function go(k) {
+  document.querySelectorAll("[data-step]").forEach(function (e) { e.classList.toggle("pending", +e.dataset.step > k); });
+  window.cur = k;
+}
+go(0);
+document.addEventListener("keydown", function (e) { if (e.key === "ArrowRight") go((window.cur || 0) + 1); });
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.11", "3.13"]
+        include:
+          - os: windows-latest
+            python: "3.11"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install
+        run: python -m pip install -e ".[test]"
+      - name: Install Chromium (Linux, with system libraries)
+        if: runner.os == 'Linux'
+        run: python -m playwright install --with-deps chromium
+      - name: Install Chromium
+        if: runner.os != 'Linux'
+        run: python -m playwright install chromium
+      - name: Test
+        run: python -m pytest -q
+
+  package:
+    name: build and install the wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build
+        run: |
+          python -m pip install build
+          python -m build
+      - name: Install the wheel outside the source tree and run it on the examples
+        run: |
+          python -m venv /tmp/venv
+          /tmp/venv/bin/pip install dist/*.whl
+          /tmp/venv/bin/python -m playwright install --with-deps chromium
+          cd /tmp
+          /tmp/venv/bin/motion-gauge --version
+          /tmp/venv/bin/motion-gauge examples ex
+          /tmp/venv/bin/motion-gauge instrument ex/calm.html
+          /tmp/venv/bin/motion-gauge busy ex/calm.html --spec ex/storyboard.json
+          /tmp/venv/bin/motion-gauge predicates ex/calm.html --spec ex/storyboard.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
