@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Busy example</title>
+<style>
+html, body { margin: 0; background: #fff; color: #1b2430; font-family: Arial, Helvetica, sans-serif; }
+#frame { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #fff; }
+#title { position: absolute; left: 160px; top: 80px; margin: 0; font-size: 48px; font-weight: 700;
+         white-space: nowrap; animation: march 1s linear 0s both; }
+.card { position: absolute; top: 450px; width: 360px; height: 180px; box-sizing: border-box;
+        border: 2px solid #1b2430; border-radius: 16px; background: #eef1f5;
+        display: grid; place-items: center; font-size: 32px; }
+#card-a { left: 240px; animation: arrive 1s linear 0s both; }
+#token { position: absolute; left: 620px; top: 520px; width: 40px; height: 40px; border-radius: 50%;
+         background: #2a5bd7; animation: ride 0.6s linear 1s both; }
+#card-b { left: 420px; animation: rise 0.8s linear 1.6s both; }
+#lbl { position: absolute; left: 1320px; top: 740px; margin: 0; font-size: 28px;
+       animation: fade 0.2s linear 1.6s both; }
+#slab { position: absolute; left: 1440px; top: 0; width: 480px; height: 360px; background: #c9d1dc; }
+.spark { position: absolute; top: 800px; width: 60px; height: 60px; background: #e0613a;
+         animation: drift 2.6s linear 0s both; }
+#pulse { position: absolute; left: 60px; top: 960px; width: 40px; height: 40px; background: #2a5bd7;
+         animation: spin 0.8s linear infinite; }
+@keyframes march { from { transform: none; } to { transform: translateX(1700px); } }
+@keyframes arrive { from { opacity: 0; transform: translateX(-120px); } to { opacity: 1; transform: none; } }
+@keyframes ride { from { transform: translateX(0); } to { transform: translateX(640px); } }
+@keyframes rise { from { opacity: 0; transform: translateY(300px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drift { from { transform: none; } to { transform: translate(300px, 100px); } }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<!-- The same story as calm.html, with the same ids, told badly.
+     0 to 1 s      the title marches off the right edge while the first card arrives
+     all the way   five sparks drift and a square spins for ever
+     always        a solid slab fills the top right corner
+     1.6 to 2.4 s  the second card rises into place on top of the first card,
+     1.6 to 1.8 s  and its label appears before the card has arrived -->
+<div id="frame">
+  <h1 id="title">Order flow</h1>
+  <div id="slab"></div>
+  <div class="card" id="card-a">Order received</div>
+  <div id="token"></div>
+  <div class="card" id="card-b">Shipped</div>
+  <p id="lbl">Checked by the warehouse</p>
+  <div class="spark" style="left: 200px"></div>
+  <div class="spark" style="left: 500px"></div>
+  <div class="spark" style="left: 800px"></div>
+  <div class="spark" style="left: 1100px"></div>
+  <div class="spark" style="left: 1400px"></div>
+  <div id="pulse"></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "spec": "motion-gauge/predicates/1",
+  "kind": "steps",
+  "frame": "#frame",
+  "viewport": [1920, 1080],
+  "beats": [
+    {"label": "step 0", "go": "() => go(0)", "predicates": ["density(max_cell=0.6)"]},
+    {"label": "step 1", "go": "() => go(0)", "enter": {"key": "ArrowRight"}, "window_ms": 800,
+     "predicates": ["maxMovers(2)", "staysInFrame(.box)"]},
+    {"label": "step 2", "go": "() => go(1)", "enter": "() => go(2)", "window_ms": 800,
+     "predicates": ["maxMovers(3)", "noOverlap([data-step='1'], [data-step='2'])"]}
+  ]
+}

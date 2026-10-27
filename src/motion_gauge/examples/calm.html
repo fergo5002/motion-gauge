@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calm example</title>
+<style>
+html, body { margin: 0; background: #fff; color: #1b2430; font-family: Arial, Helvetica, sans-serif; }
+#frame { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #fff; }
+#title { position: absolute; left: 160px; top: 80px; margin: 0; font-size: 48px; font-weight: 700; }
+.card { position: absolute; top: 450px; width: 360px; height: 180px; box-sizing: border-box;
+        border: 2px solid #1b2430; border-radius: 16px; background: #eef1f5;
+        display: grid; place-items: center; font-size: 32px; }
+#card-a { left: 240px; animation: arrive 1s linear 0s both; }
+#token { position: absolute; left: 620px; top: 520px; width: 40px; height: 40px; border-radius: 50%;
+         background: #2a5bd7; animation: ride 0.6s linear 1s both; }
+#card-b { left: 1320px; animation: fade 0.4s linear 1.6s both; }
+#lbl { position: absolute; left: 1320px; top: 740px; margin: 0; font-size: 28px;
+       animation: fade 0.5s linear 2.1s both; }
+@keyframes arrive { from { opacity: 0; transform: translateX(-120px); } to { opacity: 1; transform: none; } }
+@keyframes ride { from { transform: translateX(0); } to { transform: translateX(640px); } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+</style>
+</head>
+<body>
+<!-- One thing moves at a time, on CSS animations only.
+     0 to 1 s      the first card slides in and fades up
+     1 to 1.6 s    the token rides from the first card towards the second
+     1.6 to 2 s    the second card fades in
+     2.1 to 2.6 s  its label fades in, after the card has arrived -->
+<div id="frame">
+  <h1 id="title">Order flow</h1>
+  <div class="card" id="card-a">Order received</div>
+  <div id="token"></div>
+  <div class="card" id="card-b">Shipped</div>
+  <p id="lbl">Checked by the warehouse</p>
+</div>
+</body>
+</html>

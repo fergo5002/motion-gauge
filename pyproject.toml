@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "motion-gauge"
+version = "0.1.0"
+description = "Measure motion on rendered web pages: how busy each beat is, whether storyboard rules hold, and whether the browser can measure at all."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Fergus O'Reilly" }]
+keywords = ["animation", "motion", "playwright", "testing", "web"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "playwright>=1.49",
+    "numpy>=1.26",
+    "pillow>=10",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.urls]
+Homepage = "https://github.com/fergo5002/motion-gauge"
+Issues = "https://github.com/fergo5002/motion-gauge/issues"
+
+[project.scripts]
+motion-gauge = "motion_gauge.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+motion_gauge = ["*.js", "examples/*.html", "examples/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
