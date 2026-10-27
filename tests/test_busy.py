@@ -140,3 +140,15 @@ def test_busy_refuses_fewer_than_two_samples_at_the_command_line(monkeypatch, ca
         busy.main(["page.html", "--spec", "spec.json", "--samples", n])
     assert e.value.code == 2
     assert "--samples" in capsys.readouterr().err
+
+
+def test_a_run_that_crashes_exits_3(pages, tmp_path):
+    import subprocess
+    spec = json.loads(pages["storyboard"].read_text("utf8"))
+    spec["frame"] = "#frmae"
+    bad = tmp_path / "typo.json"
+    bad.write_text(json.dumps(spec), "utf8")
+    run = subprocess.run([sys.executable, "-m", "motion_gauge.busy", str(pages["calm"]), "--spec", str(bad)],
+                         capture_output=True, text=True, timeout=300)
+    assert run.returncode == 3, run.stdout + run.stderr
+    assert "#frmae" in run.stdout

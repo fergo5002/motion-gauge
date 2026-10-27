@@ -16,6 +16,7 @@ The spec lists the beats (see the README; predicates are ignored here). Per beat
   loops              endless animations running in the settled frame
 
 The instrument gate runs before and after. If either fails, the run reports that it measured nothing.
+Exit 0 measured, 2 measured nothing or an invalid spec, 3 the run itself failed.
 """
 
 from __future__ import annotations
@@ -148,7 +149,11 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError) as e:
         print(f"invalid spec: {e}")
         return 2
-    report = measure(args.page, spec, headed=args.headed, samples=args.samples, display_hz=args.display_hz)
+    try:
+        report = measure(args.page, spec, headed=args.headed, samples=args.samples, display_hz=args.display_hz)
+    except Exception as e:  # noqa: BLE001 - report a crash as a crash
+        print(f"error: the run failed, so nothing was measured: {type(e).__name__}: {e}")
+        return 3
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(report, indent=1), "utf8")

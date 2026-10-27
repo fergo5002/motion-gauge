@@ -11,13 +11,13 @@ The numbers are counts. They don't judge whether an animation is good, and a cou
 | Command | What it does | Exit code |
 |---|---|---|
 | `motion-gauge instrument [PAGE]` | Checks the measurement path: page visible, `requestAnimationFrame` firing within 10% of the display rate with no more than 10% long frames, style and layout reads passing a control. Records headed or headless, browser version and renderer. `busy` and `predicates` run the same gate before and after every run | 0 healthy, 1 degraded |
-| `motion-gauge busy PAGE --spec SPEC` | Per settled beat: visible text runs and words, painted elements, a 6 by 8 coverage grid from element boxes and the same grid from pixels, elements that move in the beat's motion window, endless animations | 0 measured, 2 measured nothing or a bad spec |
-| `motion-gauge predicates PAGE --spec SPEC` | Checks the spec's predicates: `appearsBy`, `before`, `staysInFrame`, `noOverlap`, `maxMovers`, `density` | 0 all hold, 1 any fails, 2 measured nothing or a bad spec |
+| `motion-gauge busy PAGE --spec SPEC` | Per settled beat: visible text runs and words, painted elements, a 6 by 8 coverage grid from element boxes and the same grid from pixels, elements that move in the beat's motion window, endless animations | 0 measured, 2 measured nothing or a bad spec, 3 the run itself failed |
+| `motion-gauge predicates PAGE --spec SPEC` | Checks the spec's predicates: `appearsBy`, `before`, `staysInFrame`, `noOverlap`, `maxMovers`, `density` | 0 all hold, 1 any fails, 2 measured nothing or a bad spec, 3 the run itself failed |
 | `motion-gauge compare CALM.json BUSY.json` | Two `busy` reports side by side, the one that should be calmer first: medians, how often its beats are lower, and a provisional band where a metric separates them | 0, or 2 if a report measured nothing |
 | `motion-gauge snippet` | Prints the paste-in browser instrument check (`--path` prints where the file is) | 0 |
 | `motion-gauge examples DIR` | Copies the example pages and specs into `DIR` | 0 |
 
-Every tool also runs as `python -m motion_gauge.<tool>`, and `motion-gauge TOOL --help` lists its options.
+Every tool also runs as `python -m motion_gauge.<tool>`, and `motion-gauge TOOL --help` lists its options. Exit 3 means the run crashed before it could check anything (a page that won't load, a frame selector that matches nothing, a script in the spec that throws), so a CI job can tell that apart from a rule that failed.
 
 ## Install
 
@@ -125,11 +125,11 @@ One JSON object. `busy` and `predicates` read the same format; `busy` ignores th
 
 **seek** pages have a timeline the gauge can set to any time, so sampling doesn't depend on the frame rate. `timeline` is either `"animations"`, which pauses every Web Animation in the document (CSS animations and transitions included) and sets them all to the same time, or a JavaScript expression for an object with a `seek(seconds)` method, such as a GSAP timeline (`"window.tl"`). Each beat settles at `at` seconds and its motion window is `window`, `[start, end]` in seconds.
 
-**steps** pages move in real time when something happens. Each beat may have `go` (JavaScript run first, to reach the step before) and `enter` (JavaScript, or `{"key": "ArrowRight"}` dispatched on the document) to start its window, which lasts `window_ms` (default 1500) and is sampled every `every_ms` (default 50). A beat with no `enter` has no motion window. Optional `setup` (JavaScript) and `setup_wait_ms` run once after load, to stop an autoplay, say. Run these headed (see below).
+**steps** pages move in real time when something happens. Each beat may have `go` (JavaScript run first, to reach the step before) and `enter` (a JavaScript expression such as `go(2)`, a function such as `() => go(2)`, or `{"key": "ArrowRight"}` dispatched on the document) to start its window, which lasts `window_ms` (default 1500) and is sampled every `every_ms` (default 50). A beat with no `enter` has no motion window. Optional `setup` (JavaScript) and `setup_wait_ms` run once after load, to stop an autoplay, say. Run these headed (see below).
 
 ## The predicates
 
-Times are fractions of the beat's motion window: 0 is where it starts, 1 the settle. A selector that matches nothing fails its predicate, because a check that can't see its subject hasn't passed.
+Times are fractions of the beat's motion window: 0 is where it starts, 1 the settle. A selector that matches nothing fails its predicate, because a check that can't see its subject hasn't passed. For the same reason `appearsBy`, `before` and `maxMovers` are refused on a beat with no motion window.
 
 | Predicate | Holds when |
 |---|---|

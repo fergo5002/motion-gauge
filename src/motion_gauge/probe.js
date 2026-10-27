@@ -304,7 +304,9 @@
     G.windowStart(rootSel, track, opts);
     G.sample(0);
     var t0 = performance.now();
-    if (typeof enter === "string") { if (enter) (0, eval)("(" + enter + ")")(); }
+    // enter is a function expression ("() => go(2)"), called here, or any expression ("go(2)"),
+    // which runs as it is evaluated.
+    if (typeof enter === "string") { if (enter) { var r = (0, eval)("(" + enter + ")"); if (typeof r === "function") r(); } }
     else if (enter && enter.key) document.dispatchEvent(new KeyboardEvent("keydown", {key: enter.key, bubbles: true, cancelable: true}));
     return new Promise(function (res) {
       (function tick() {

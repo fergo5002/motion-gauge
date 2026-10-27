@@ -92,6 +92,18 @@ def test_the_snippet_warns_about_quirks_mode_but_not_on_a_standards_page(session
     assert out["verdict"] == "USABLE WITH CAVEATS"
 
 
+def test_the_style_control_holds_against_the_pages_own_important_rules(session, tmp_path):
+    p = tmp_path / "important.html"
+    p.write_text("<!doctype html><html><head><meta charset='utf-8'><style>body div { color: #333 !important; "
+                 "width: 10px !important; opacity: 1 !important; }</style></head><body><div>text</div></body></html>", "utf8")
+    page = session.open(p)
+    try:
+        out = run_snippet(page, {"cadence": "warn"})
+    finally:
+        page.context.close()
+    assert out["blockers"] == [], out["blockers"]
+
+
 @pytest.mark.parametrize("intervals, display, ok", [
     ([16.7] * 60, 60, True),                       # a healthy 60 Hz page
     ([33.3] * 60, 60, False),                      # half rate: throttled or overloaded

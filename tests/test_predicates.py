@@ -155,3 +155,47 @@ def test_the_command_line_exits_2_on_a_bad_spec(tmp_path, pages, capsys):
     bad.write_text(json.dumps({"kind": "seek", "beats": []}), "utf8")
     assert predicates.main([str(pages["calm"]), "--spec", str(bad)]) == 2
     assert "invalid spec" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------- review fixes
+
+@pytest.mark.parametrize("pred", ["maxMovers(0)", "before(#card-b, #lbl)", "appearsBy(#lbl, 0)"])
+def test_a_rule_about_motion_on_a_beat_with_no_window_is_refused(pred):
+    spec = {"kind": "seek", "frame": "#frame", "timeline": "animations", "beats": [{"label": "still", "at": 2.6, "predicates": [pred]}]}
+    with pytest.raises(ValueError, match="motion window"):
+        predicates.validate(spec)
+    steps = {"kind": "steps", "frame": "#frame", "beats": [{"label": "still", "go": "() => go(0)", "predicates": [pred]}]}
+    with pytest.raises(ValueError, match="motion window"):
+        predicates.validate(steps)
+
+
+def test_rules_about_the_settled_frame_are_fine_on_a_beat_with_no_window():
+    spec = {"kind": "seek", "frame": "#frame", "timeline": "animations",
+            "beats": [{"label": "still", "at": 2.6, "predicates": ["staysInFrame(#title)", "noOverlap(#card-a, #card-b)", "density(0.6)"]}]}
+    predicates.validate(spec)
+
+
+def test_a_missing_window_fails_rather_than_passes_if_it_reaches_evaluation():
+    p = predicates.parse("maxMovers(0)")
+    res = predicates.evaluate(p, [(0.0, [])], {}, None, {}, 100, 100, None, "still")
+    assert res["ok"] is False and "motion window" in res["detail"]
+
+
+def test_a_run_that_crashes_exits_3_not_1(pages, tmp_path):
+    spec = json.loads(pages["storyboard"].read_text("utf8"))
+    spec["frame"] = "#frmae"
+    bad = tmp_path / "typo.json"
+    bad.write_text(json.dumps(spec), "utf8")
+    for page, words in ((pages["calm"], "#frmae"), (tmp_path / "missing.html", "missing.html")):
+        run = subprocess.run([sys.executable, "-m", "motion_gauge.predicates", str(page), "--spec", str(bad)],
+                             capture_output=True, text=True, timeout=300)
+        assert run.returncode == 3, run.stdout + run.stderr
+        assert "error" in run.stdout and words in run.stdout
+
+
+def test_enter_may_be_an_expression_or_a_function(pages, session, healthy_clock):
+    spec = json.loads(pages["steps_spec"].read_text("utf8"))
+    spec["beats"][2]["enter"] = "go(2)"
+    r = predicates.check(pages["steps"], spec, session=session)
+    assert r["measured"] is True, r.get("note")
+    assert r["beats"][2]["movers"]["window"] == 3

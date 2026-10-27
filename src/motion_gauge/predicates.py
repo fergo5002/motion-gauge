@@ -3,7 +3,8 @@
     motion-gauge predicates PAGE --spec SPEC.json [--out REPORT.json] [--headed] [--samples 25]
 
 Exit 0 when every predicate holds, 1 when any fails, 2 when the instrument gate failed (the run
-measured nothing) or the spec is invalid. The spec format is in the README.
+measured nothing) or the spec is invalid, 3 when the run itself failed (a page that will not load, a
+frame selector that matches nothing, a script in the spec that throws). The spec format is in the README.
 
 Times are fractions of the beat's motion window: 0 is where the motion starts, 1 the settle. For a
 seek spec that window is the beat's `window`; for a steps spec it is `window_ms` after `enter`.
@@ -48,6 +49,8 @@ KNOWN = {
     "density": ((), {"max_cell": 0.6, "using": "coverage"}),
 }
 NUMERIC = {"t", "n", "tol", "iou", "max_cell"}
+# Predicates that read the motion window, and so mean nothing on a beat without one.
+NEEDS_WINDOW = {"appearsBy", "before", "maxMovers"}
 SELECTORS = {"sel", "a", "b"}
 
 
@@ -165,11 +168,15 @@ def validate(spec: dict) -> dict:
         preds = row.get("predicates", [])
         if not isinstance(preds, list):
             raise ValueError(f"{where}: predicates is a list of strings")
+        has_window = bool(row.get("window")) if spec["kind"] == "seek" else bool(row.get("enter"))
         for p in preds:
             try:
-                parse(p)
+                parsed = parse(p)
             except ValueError as e:
                 raise ValueError(f"{where}: {e}") from None
+            if parsed.name in NEEDS_WINDOW and not has_window:
+                field = "window" if spec["kind"] == "seek" else "enter"
+                raise ValueError(f"{where}: {p} reads the motion window, and this beat has none (give it a {field!r})")
     return spec
 
 
@@ -229,6 +236,9 @@ def _iou(p, q) -> float:
 
 def evaluate(p: Predicate, tl, index: dict[str, int], win: dict | None, settled: dict, W: float, H: float, ink: dict | None, where: str) -> dict:
     res = {"predicate": p.text, "ok": False, "detail": "", "values": {}}
+    if p.name in NEEDS_WINDOW and not win:
+        res["detail"] = f"{where} has no motion window, so {p.name} has nothing to read"
+        return res
     for sel in p.selectors():
         j = index[sel]
         if not any(sets[j] for _, sets in tl):
@@ -396,7 +406,11 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError) as e:
         print(f"invalid spec: {e}")
         return 2
-    report = check(args.page, spec, headed=args.headed, samples=args.samples, display_hz=args.display_hz)
+    try:
+        report = check(args.page, spec, headed=args.headed, samples=args.samples, display_hz=args.display_hz)
+    except Exception as e:  # noqa: BLE001 - any crash must not read as a failed predicate
+        print(f"error: the run failed, so nothing was checked: {type(e).__name__}: {e}")
+        return 3
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(report, indent=1), "utf8")

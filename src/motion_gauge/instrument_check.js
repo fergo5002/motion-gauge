@@ -130,7 +130,10 @@
   try {
     const probe = document.createElement('div');
     probe.textContent = 'instrument control';
-    probe.style.cssText = 'position:fixed;left:0;top:0;color:rgb(1,2,3);width:37px;opacity:0.01;pointer-events:none';
+    // Every property set !important, so the page's own !important rules cannot win the cascade.
+    [['position', 'fixed'], ['left', '0'], ['top', '0'], ['color', 'rgb(1, 2, 3)'], ['width', '37px'],
+     ['display', 'block'], ['visibility', 'visible'], ['opacity', '0.01'], ['pointer-events', 'none']]
+      .forEach(([k, v]) => probe.style.setProperty(k, v, 'important'));
     (document.body || document.documentElement).appendChild(probe);
     const cs = getComputedStyle(probe);
     const rect = probe.getBoundingClientRect();
