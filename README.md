@@ -1,27 +1,18 @@
 # motion-gauge
 
-motion-gauge measures motion on rendered web pages. It opens a page in Chromium through Playwright, walks it beat by beat, and counts what a viewer has to take in: how many things move at once, how much text is on screen, how crowded each part of the frame is. It also checks a storyboard's rules against the page, such as "the token arrives before its label appears" or "nothing leaves the frame".
+A ruler for animation. Point it at a web page and it counts what a viewer has to take in, beat by beat: how many things move at once, how many words are on screen, how crowded each part of the frame gets. Give it a storyboard and it checks the rules too.
 
-Before it measures anything it checks the browser itself. A background tab, a throttled frame clock or a layout read that comes back empty all look like a broken animation, and none of them is. If the measurement path is unhealthy, the run says it measured nothing rather than reporting numbers. That check is also a standalone file you can paste into DevTools.
+<img src=".github/readme/calm-vs-busy.gif" alt="Two versions of the same order-flow animation side by side. On the left, calm.html moves one thing at a time and all its rules hold. On the right, busy.html has sparks drifting, a square spinning, a title marching off the edge and two cards landing on top of each other; six of its ten rules fail" width="860">
 
-The numbers are counts. They don't judge whether an animation is good, and a count only means something once you've compared it against pages people have already judged (see [Turning counts into thresholds](#turning-counts-into-thresholds)).
+<sub>The two example pages that ship with it, telling the same story. Numbers measured by `motion-gauge busy` and `motion-gauge predicates`.</sub>
 
-## The tools
+The bit that matters most: **it checks the browser before it checks the page.** A background tab, a throttled frame clock or a layout read that comes back empty all look exactly like a broken animation, and none of them is. If the measurement path isn't healthy, motion-gauge says it measured nothing rather than handing you numbers. That check is also a single file you can paste into DevTools.
 
-| Command | What it does | Exit code |
-|---|---|---|
-| `motion-gauge instrument [PAGE]` | Checks the measurement path: page visible, `requestAnimationFrame` firing within 10% of the display rate with no more than 10% long frames, style and layout reads passing a control. Records headed or headless, browser version and renderer. `busy` and `predicates` run the same gate before and after every run | 0 healthy, 1 degraded |
-| `motion-gauge busy PAGE --spec SPEC` | Per settled beat: visible text runs and words, painted elements, a 6 by 8 coverage grid from element boxes and the same grid from pixels, elements that move in the beat's motion window, endless animations | 0 measured, 2 measured nothing or a bad spec, 3 the run itself failed |
-| `motion-gauge predicates PAGE --spec SPEC` | Checks the spec's predicates: `appearsBy`, `before`, `staysInFrame`, `noOverlap`, `maxMovers`, `density` | 0 all hold, 1 any fails, 2 measured nothing or a bad spec, 3 the run itself failed |
-| `motion-gauge compare CALM.json BUSY.json` | Two `busy` reports side by side, the one that should be calmer first: medians, how often its beats are lower, and a provisional band where a metric separates them | 0, or 2 if a report measured nothing |
-| `motion-gauge snippet` | Prints the paste-in browser instrument check (`--path` prints where the file is) | 0 |
-| `motion-gauge examples DIR` | Copies the example pages and specs into `DIR` | 0 |
-
-Every tool also runs as `python -m motion_gauge.<tool>`, and `motion-gauge TOOL --help` lists its options. Exit 3 means the run crashed before it could check anything (a page that won't load, a frame selector that matches nothing, a script in the spec that throws), so a CI job can tell that apart from a rule that failed.
+The numbers are counts, not taste. They don't tell you whether an animation is good. A count only starts to mean something once you've compared it against pages people have already judged ([how](#turning-counts-into-thresholds)).
 
 ## Install
 
-Python 3.11 or later. motion-gauge isn't on PyPI; install the wheel from the [latest release](https://github.com/fergo5002/motion-gauge/releases/latest), then fetch Playwright's Chromium:
+Python 3.11 or later. It isn't on PyPI, so install the wheel from the [latest release](https://github.com/fergo5002/motion-gauge/releases/latest) and fetch Playwright's Chromium:
 
 ```sh
 pip install https://github.com/fergo5002/motion-gauge/releases/download/v0.1.0/motion_gauge-0.1.0-py3-none-any.whl
@@ -41,7 +32,7 @@ python -m playwright install chromium
 
 ## Try it on the examples
 
-The package ships two pages that tell the same small story with the same element ids: an order card arrives, a token rides across, a second card and its label appear. `calm.html` moves one thing at a time. `busy.html` does everything at once: the title marches off the edge, five sparks drift throughout, a square spins for ever, a solid slab fills a corner, and the second card lands on top of the first while its label shows up early. `storyboard.json` holds the rules both pages are checked against.
+The package ships the two pages in the GIF above, with the same element ids. An order card arrives, a token rides across, a second card and its label appear. `calm.html` moves one thing at a time. `busy.html` does everything at once: the title marches off the edge, five sparks drift throughout, a square spins for ever, a solid slab fills a corner, and the second card lands on top of the first while its label shows up early. `storyboard.json` holds the rules both are checked against.
 
 ```sh
 motion-gauge examples ex
@@ -81,6 +72,19 @@ The calm page reads 1, 1 and 1 for its movers peak and has no cell over 0.6. The
 ```
 
 The calm page passes all ten and exits 0. `steps.html` and `steps.json` show the other kind of page, one that steps like a slide deck.
+
+## The tools
+
+| Command | What it does | Exit code |
+|---|---|---|
+| `motion-gauge instrument [PAGE]` | Checks the measurement path: page visible, `requestAnimationFrame` firing within 10% of the display rate with no more than 10% long frames, style and layout reads passing a control. Records headed or headless, browser version and renderer. `busy` and `predicates` run the same gate before and after every run | 0 healthy, 1 degraded |
+| `motion-gauge busy PAGE --spec SPEC` | Per settled beat: visible text runs and words, painted elements, a 6 by 8 coverage grid from element boxes and the same grid from pixels, elements that move in the beat's motion window, endless animations | 0 measured, 2 measured nothing or a bad spec, 3 the run itself failed |
+| `motion-gauge predicates PAGE --spec SPEC` | Checks the spec's predicates: `appearsBy`, `before`, `staysInFrame`, `noOverlap`, `maxMovers`, `density` | 0 all hold, 1 any fails, 2 measured nothing or a bad spec, 3 the run itself failed |
+| `motion-gauge compare CALM.json BUSY.json` | Two `busy` reports side by side, the one that should be calmer first: medians, how often its beats are lower, and a provisional band where a metric separates them | 0, or 2 if a report measured nothing |
+| `motion-gauge snippet` | Prints the paste-in browser instrument check (`--path` prints where the file is) | 0 |
+| `motion-gauge examples DIR` | Copies the example pages and specs into `DIR` | 0 |
+
+Every tool also runs as `python -m motion_gauge.<tool>`, and `motion-gauge TOOL --help` lists its options. Exit 3 means the run crashed before it could check anything (a page that won't load, a frame selector that matches nothing, a script in the spec that throws), so a CI job can tell that apart from a rule that failed.
 
 ## The paste-in instrument check
 
